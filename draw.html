@@ -360,9 +360,7 @@ const ND = (() => {
       await db.ref().update(updates);
     } catch (e) {
       console.error('DRAW_WRITE_ERROR', e);
-      const code = String(e?.code || 'UNKNOWN');
-      const msg = String(e?.message || e || 'خطأ غير معروف');
-      throw fail(`فشل حفظ نتيجة السحب — ${code}: ${msg}`, 'draw-write');
+      throw fail('تعذّر حفظ نتيجة السحب. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.', 'draw-write');
     }
     return {...winner,id:winnerId};
   }
