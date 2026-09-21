@@ -346,7 +346,9 @@ const ND = (() => {
   async function logout(){if(cloud)await cloud.auth.signOut();authorized=false;emit();}
   async function setRegistration(open){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({registrationOpen:open,revision:(state.revision||0)+1});}
   async function drawWinner(){
-    requireReady(true);if(state.registrationOpen)throw fail('أغلق التسجيل أولًا لبدء السحب.');
+    requireReady(true);
+    const {db}=cloud;
+    if(state.registrationOpen)throw fail('أغلق التسجيل أولًا لبدء السحب.');
     const wonIds=new Set(winners.filter(w=>w.round===state.round).map(w=>String(w.participantId)));
     const pool=participants.filter(p=>!wonIds.has(String(p.id)));if(!pool.length)throw fail('لا يوجد مشاركون متاحون للسحب.');
     const candidate=pool[randomIndex(pool.length)],order=(state.drawCount||0)+1,now=Date.now(),winnerId=`${state.round}_${order}`;
