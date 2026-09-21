@@ -221,6 +221,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:20px;text-align:center">فعّل JavaScript لعرض أدوات السحب.</p></noscript>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 /* ND96 — الإعداد الوحيد المطلوب في الصفحتين قبل التشغيل الفعلي.
    لا تضع كلمة مرور أو مفتاح حساب خدمة هنا. إعدادات تطبيق Firebase Web عامة.
@@ -277,29 +280,29 @@ const ND = (() => {
   function requireReady(admin=false){if(!ready)throw fail(lastError||'الخدمة غير جاهزة بعد.');if(admin&&!authorized)throw fail('سجّل الدخول بحساب المشرف أولًا.');}
   async function init(){
     try{
-      const base='https://www.gstatic.com/firebasejs/12.19.0/';
-      const [appSDK,authSDK,dbSDK]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-database.js')]);
-      const app=appSDK.initializeApp(APP_CONFIG.firebase),auth=authSDK.getAuth(app),db=dbSDK.getDatabase(app);
-      cloud={authSDK,dbSDK,auth,db};
-      await authSDK.setPersistence(auth,authSDK.browserSessionPersistence);
-      const settingsRef=dbSDK.ref(db,eventPath+'/settings');
-      dbSDK.onValue(settingsRef,snap=>{
+      if(!window.firebase) throw fail('تعذّر تحميل مكتبة Firebase. حدّث الصفحة وحاول مرة أخرى.');
+      const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(APP_CONFIG.firebase);
+      const auth = firebase.auth(app), db = firebase.database(app);
+      cloud={auth,db};
+      await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+      const settingsRef=db.ref(eventPath+'/settings');
+      settingsRef.on('value',snap=>{
         const d=snap.val();
         /* إعدادات آمنة افتراضيًا: وجود settings في Firebase يحدّثها فورًا،
            وعدم وصول لقطة مؤقتًا لا يعطّل واجهة التسجيل برسالة تهيئة مضللة. */
         if(d && typeof d === 'object') state={...state,...d};
         ready=true; lastError=''; emit();
       },err=>{ready=false;report(err);});
-      authSDK.onAuthStateChanged(auth,async user=>{
+      auth.onAuthStateChanged(async user=>{
         authorized=false;participants=[];winners=[];peopleReady=winnersReady=false;emit();
         if(!user||user.isAnonymous)return;
         try{
-          const adminSnap=await dbSDK.get(dbSDK.ref(db,'ui_auth_users_v2/'+user.uid));
+          const adminSnap=await db.ref('ui_auth_users_v2/'+user.uid).once('value');
           const adminData=adminSnap.val();
           if(!adminData || adminData.active!==true || adminData.role!=='مدير النظام'){report(fail('هذا الحساب غير مخوّل لإدارة السحب.'));return;}
           authorized=true;
-          dbSDK.onValue(dbSDK.ref(db,eventPath+'/participants'),snap=>{const v=snap.val()||{};participants=Object.entries(v).map(([id,x])=>({id,...x}));peopleReady=true;lastError='';emit();},report);
-          dbSDK.onValue(dbSDK.ref(db,eventPath+'/winners'),snap=>{const v=snap.val()||{};winners=Object.entries(v).map(([id,x])=>({id,...x})).sort((a,b)=>a.order-b.order);winnersReady=true;emit();},report);
+          db.ref(eventPath+'/participants').on('value',snap=>{const v=snap.val()||{};participants=Object.entries(v).map(([id,x])=>({id,...x}));peopleReady=true;lastError='';emit();},report);
+          db.ref(eventPath+'/winners').on('value',snap=>{const v=snap.val()||{};winners=Object.entries(v).map(([id,x])=>({id,...x})).sort((a,b)=>a.order-b.order);winnersReady=true;emit();},report);
           emit();
         }catch(e){report(e);}
       });
@@ -307,26 +310,26 @@ const ND = (() => {
   }
   async function register(name,academic){
     requireReady();const data=validate(name,academic);if(!state.registrationOpen)throw fail('أُغلق التسجيل وبدأ الاستعداد للسحب.');
-    const {dbSDK:f,db}=cloud;
-    const ref=f.ref(db,eventPath+'/participants/'+data.academic);
-    const entry={...data,createdAt:f.serverTimestamp(),winnerRound:0,winnerOrder:0,wonAt:null};
-    try{const result=await f.runTransaction(ref,current=>current===null?entry:undefined,{applyLocally:false});if(!result.committed)throw fail('هذا الرقم الأكاديمي مسجّل مسبقًا.','academic');}
+    const {db}=cloud;
+    const ref=db.ref(eventPath+'/participants/'+data.academic);
+    const entry={...data,createdAt:firebase.database.ServerValue.TIMESTAMP,winnerRound:0,winnerOrder:0,wonAt:null};
+    try{const result=await ref.transaction(current=>current===null?entry:undefined,undefined,false);if(!result.committed)throw fail('هذا الرقم الأكاديمي مسجّل مسبقًا.','academic');}
     catch(e){if(e?.nd)throw e;if(/PERMISSION_DENIED|permission-denied/.test(String(e?.code||e?.message)))throw fail('لم يتم التسجيل. قد يكون الرقم مسجّلًا مسبقًا أو التسجيل مغلقًا.');throw e;}
     return data;
   }
-  async function login(email,password){if(!cloud)throw fail('خدمة الدخول غير جاهزة.');lastError='';await cloud.authSDK.signInWithEmailAndPassword(cloud.auth,email.trim(),password);}
+  async function login(email,password){if(!cloud)throw fail('خدمة الدخول غير جاهزة.');lastError='';await cloud.auth.signInWithEmailAndPassword(email.trim(),password);}
   function openPreview(){}
-  async function logout(){if(cloud)await cloud.authSDK.signOut(cloud.auth);authorized=false;emit();}
-  async function setRegistration(open){requireReady(true);const {dbSDK:f,db}=cloud;await f.update(f.ref(db,eventPath+'/settings'),{registrationOpen:open,revision:(state.revision||0)+1});}
+  async function logout(){if(cloud)await cloud.auth.signOut();authorized=false;emit();}
+  async function setRegistration(open){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({registrationOpen:open,revision:(state.revision||0)+1});}
   async function drawWinner(){
     requireReady(true);if(state.registrationOpen)throw fail('أغلق التسجيل أولًا لبدء السحب.');
     const pool=participants.filter(p=>p.winnerRound!==state.round);if(!pool.length)throw fail('لا يوجد مشاركون متاحون للسحب.');
     const candidate=pool[randomIndex(pool.length)],order=(state.drawCount||0)+1,now=Date.now(),winnerId=`${state.round}_${order}`;
     const winner={name:candidate.name,academic:candidate.academic,participantId:candidate.id,round:state.round,order,wonAt:now};
     const updates={};updates[`${eventPath}/participants/${candidate.id}/winnerRound`]=state.round;updates[`${eventPath}/participants/${candidate.id}/winnerOrder`]=order;updates[`${eventPath}/participants/${candidate.id}/wonAt`]=now;updates[`${eventPath}/winners/${winnerId}`]=winner;updates[`${eventPath}/settings/drawCount`]=order;updates[`${eventPath}/settings/revision`]=(state.revision||0)+1;
-    await f.update(f.ref(db),updates);return {...winner,id:winnerId};
+    await db.ref().update(updates);return {...winner,id:winnerId};
   }
-  async function resetWinners(){requireReady(true);const {dbSDK:f,db}=cloud;await f.update(f.ref(db,eventPath+'/settings'),{round:(state.round||1)+1,drawCount:0,revision:(state.revision||0)+1});}
+  async function resetWinners(){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({round:(state.round||1)+1,drawCount:0,revision:(state.revision||0)+1});}
   async function seedDemo(){throw fail('هذه العملية غير متاحة.');}
   function adminDataReady(){return authorized&&peopleReady&&winnersReady;}
   return {init,onChange,getSnapshot,register,login,logout,openPreview,setRegistration,drawWinner,resetWinners,seedDemo,validate,mask,randomIndex,friendlyError,adminDataReady};
