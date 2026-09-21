@@ -1859,13 +1859,13 @@ module.exports = QRCode;
       const li=document.createElement('li');li.className='history-row';
       const rank=document.createElement('span');rank.className='history-rank';rank.textContent=fmt(w.order);
       const detail=document.createElement('div'),name=document.createElement('b'),number=document.createElement('small');
-      name.textContent=w.name;number.textContent='الرقم الأكاديمي: '+ND.mask(w.academic);detail.append(name,number);li.append(rank,detail);list.append(li);
+      name.textContent=w.name;number.textContent='الرقم الأكاديمي: '+w.academic;detail.append(name,number);li.append(rank,detail);list.append(li);
     }
     hidden('historyEmpty',winners.length>0); hidden('winnerHistory',winners.length===0);
     text('historyCount',fmt(winners.length));
   }
   function showWinner(w,s) {
-    if (w) { text('winnerName',w.name);text('winnerNumber','الرقم الأكاديمي: '+ND.mask(w.academic));text('drawEyebrow',`الفائز رقم ${fmt(w.order)} — ألف مبروك`); }
+    if (w) { text('winnerName',w.name);text('winnerNumber','الرقم الأكاديمي: '+w.academic);text('drawEyebrow',`الفائز رقم ${fmt(w.order)} — ألف مبروك`); }
     else {text('winnerName','مَن صاحب الحظ؟');text('winnerNumber','نحتفل معًا… ونترقّب لحظة الفوز');text('drawEyebrow','كل مشاركة تحمل فرصة');}
   }
   function renderDraw(s) {
@@ -1900,7 +1900,7 @@ module.exports = QRCode;
       submitting=true;renderRegister(snapshot);
       try{
         const result=await ND.register($('fullName').value,$('academicNumber').value);
-        text('receiptName',result.name);text('receiptNumber','الرقم الأكاديمي: '+ND.mask(result.academic));
+        text('receiptName',result.name);text('receiptNumber','الرقم الأكاديمي: '+result.academic);
         text('successTitle',snapshot.configured?'تم تسجيل مشاركتك':'اكتملت تجربة التسجيل');
         text('successText','أصبحت ضمن المشاركين في سحب الحفل. نتمنى لك حظًا موفقًا، وكل عام والوطن بخير.');
         hidden('formBox',true);hidden('closedState',true);hidden('successState',false);$('successState').focus();
@@ -1942,7 +1942,7 @@ module.exports = QRCode;
     $('exportWinners').addEventListener('click',()=>{
       const winners=currentWinners(snapshot);if(!snapshot.authorized||!winners.length)return;
       const cell=x=>'"'+String(x).replace(/^[=+@\-]/,"'$&").replace(/"/g,'""')+'"';
-      const rows=[['ترتيب الفوز','الاسم الرباعي','الرقم الأكاديمي (آخر أربعة أرقام)','الجولة'],...winners.map(w=>[w.order,w.name,ND.mask(w.academic),w.round])];
+      const rows=[['ترتيب الفوز','الاسم الرباعي','الرقم الأكاديمي','الجولة'],...winners.map(w=>[w.order,w.name,w.academic,w.round])];
       const blob=new Blob(['\uFEFF'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ND96_Winners_Round_'+snapshot.state.round+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
     });
     function presentation(on){document.body.classList.toggle('presentation',on);if(on){document.documentElement.requestFullscreen?.().catch(()=>{});$('drawButton').focus();}else if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});}
