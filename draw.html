@@ -353,7 +353,15 @@ const ND = (() => {
     const academic=String(candidate.academic || candidate.academicId || candidate.id || '');
     const winner={name:candidate.name,academic,academicId:academic,participantId:candidate.id,round:state.round,order,wonAt:now};
     const updates={};updates[`${eventPath}/winners/${winnerId}`]=winner;updates[`${eventPath}/settings/drawCount`]=order;updates[`${eventPath}/settings/revision`]=(state.revision||0)+1;
-    await db.ref().update(updates);return {...winner,id:winnerId};
+    try {
+      await db.ref().update(updates);
+    } catch (e) {
+      console.error('DRAW_WRITE_ERROR', e);
+      const code = String(e?.code || 'UNKNOWN');
+      const msg = String(e?.message || e || 'خطأ غير معروف');
+      throw fail(`فشل حفظ نتيجة السحب — ${code}: ${msg}`, 'draw-write');
+    }
+    return {...winner,id:winnerId};
   }
   async function resetWinners(){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({round:(state.round||1)+1,drawCount:0,revision:(state.revision||0)+1});}
   async function seedDemo(){throw fail('هذه العملية غير متاحة.');}
