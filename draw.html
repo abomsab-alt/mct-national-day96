@@ -349,7 +349,8 @@ const ND = (() => {
     requireReady(true);if(state.registrationOpen)throw fail('أغلق التسجيل أولًا لبدء السحب.');
     const pool=participants.filter(p=>p.winnerRound!==state.round);if(!pool.length)throw fail('لا يوجد مشاركون متاحون للسحب.');
     const candidate=pool[randomIndex(pool.length)],order=(state.drawCount||0)+1,now=Date.now(),winnerId=`${state.round}_${order}`;
-    const winner={name:candidate.name,academic:candidate.academic,participantId:candidate.id,round:state.round,order,wonAt:now};
+    const academic=String(candidate.academic || candidate.academicId || candidate.id || '');
+    const winner={name:candidate.name,academic,academicId:academic,participantId:candidate.id,round:state.round,order,wonAt:now};
     const updates={};updates[`${eventPath}/participants/${candidate.id}/winnerRound`]=state.round;updates[`${eventPath}/participants/${candidate.id}/winnerOrder`]=order;updates[`${eventPath}/participants/${candidate.id}/wonAt`]=now;updates[`${eventPath}/winners/${winnerId}`]=winner;updates[`${eventPath}/settings/drawCount`]=order;updates[`${eventPath}/settings/revision`]=(state.revision||0)+1;
     await db.ref().update(updates);return {...winner,id:winnerId};
   }
