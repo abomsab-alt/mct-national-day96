@@ -311,7 +311,7 @@ const ND = (() => {
     const ref=db.ref(eventPath+'/participants/'+data.academic);
     const entry={name:data.name,academic:data.academic,academicId:data.academic,createdAt:firebase.database.ServerValue.TIMESTAMP,winnerRound:0,winnerOrder:0};
     try{await ref.set(entry);}
-    catch(e){if(e?.nd)throw e;if(/PERMISSION_DENIED|permission-denied/.test(String(e?.code||e?.message)))throw fail('رفض Firebase عملية التسجيل (PERMISSION_DENIED). إذا كان الرقم جديدًا فالمشكلة في صلاحية الكتابة أو App Check، وليست في النموذج.');throw e;}
+    catch(e){if(e?.nd)throw e;if(/PERMISSION_DENIED|permission-denied/.test(String(e?.code||e?.message)))throw fail('هذا الرقم الأكاديمي مسجّل مسبقًا في السحب.');throw e;}
     return data;
   }
   async function login(email,password){if(!cloud)throw fail('خدمة الدخول غير جاهزة.');lastError='';await cloud.auth.signInWithEmailAndPassword(email.trim(),password);}
