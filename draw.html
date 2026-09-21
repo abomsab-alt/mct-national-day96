@@ -347,11 +347,12 @@ const ND = (() => {
   async function setRegistration(open){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({registrationOpen:open,revision:(state.revision||0)+1});}
   async function drawWinner(){
     requireReady(true);if(state.registrationOpen)throw fail('أغلق التسجيل أولًا لبدء السحب.');
-    const pool=participants.filter(p=>p.winnerRound!==state.round);if(!pool.length)throw fail('لا يوجد مشاركون متاحون للسحب.');
+    const wonIds=new Set(winners.filter(w=>w.round===state.round).map(w=>String(w.participantId)));
+    const pool=participants.filter(p=>!wonIds.has(String(p.id)));if(!pool.length)throw fail('لا يوجد مشاركون متاحون للسحب.');
     const candidate=pool[randomIndex(pool.length)],order=(state.drawCount||0)+1,now=Date.now(),winnerId=`${state.round}_${order}`;
     const academic=String(candidate.academic || candidate.academicId || candidate.id || '');
     const winner={name:candidate.name,academic,academicId:academic,participantId:candidate.id,round:state.round,order,wonAt:now};
-    const updates={};updates[`${eventPath}/participants/${candidate.id}/winnerRound`]=state.round;updates[`${eventPath}/participants/${candidate.id}/winnerOrder`]=order;updates[`${eventPath}/participants/${candidate.id}/wonAt`]=now;updates[`${eventPath}/winners/${winnerId}`]=winner;updates[`${eventPath}/settings/drawCount`]=order;updates[`${eventPath}/settings/revision`]=(state.revision||0)+1;
+    const updates={};updates[`${eventPath}/winners/${winnerId}`]=winner;updates[`${eventPath}/settings/drawCount`]=order;updates[`${eventPath}/settings/revision`]=(state.revision||0)+1;
     await db.ref().update(updates);return {...winner,id:winnerId};
   }
   async function resetWinners(){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({round:(state.round||1)+1,drawCount:0,revision:(state.revision||0)+1});}
@@ -1897,7 +1898,7 @@ module.exports = QRCode;
     hidden('adminNotice',true);
     error('adminError',allowed&&s.error?s.error:'');
     if(allowed&&$('loginDialog').open){$('loginDialog').close();$('loginForm').reset();}
-    const winners=currentWinners(s), eligible=s.participants.filter(p=>p.winnerRound!==s.state.round);
+    const winners=currentWinners(s), wonIds=new Set(winners.map(w=>String(w.participantId))), eligible=s.participants.filter(p=>!wonIds.has(String(p.id)));
     $('drawButton').disabled=busy||!s.ready||!loaded||!eligible.length||Boolean(s.error)||(s.configured&&navigator.onLine===false);
     for(const id of ['toggleRegistration','resetWinners','logoutAdmin']){const el=$(id);if(el)el.disabled=busy||!allowed||!s.ready;}
     $('resetWinners').disabled=busy||!allowed||!s.ready||!winners.length;
@@ -1949,7 +1950,8 @@ module.exports = QRCode;
       let animation;
       try{
         if(closeFirst)await ND.setRegistration(false);
-        const pool=snapshot.participants.filter(p=>p.winnerRound!==snapshot.state.round);
+        const wonIds=new Set(currentWinners(snapshot).map(w=>String(w.participantId)));
+        const pool=snapshot.participants.filter(p=>!wonIds.has(String(p.id)));
         const chosen=await ND.drawWinner();
         text('drawEyebrow','لحظة… صاحب الحظ قادم');$('winnerName').classList.add('is-spinning');text('winnerNumber','جارٍ إعلان النتيجة');
         if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&pool.length){animation=setInterval(()=>text('winnerName',pool[ND.randomIndex(pool.length)].name),100);await sleep(1900);}
