@@ -284,7 +284,13 @@ const ND = (() => {
       await authSDK.setPersistence(auth,authSDK.browserSessionPersistence);
       if(!auth.currentUser) await authSDK.signInAnonymously(auth);
       const settingsRef=dbSDK.ref(db,eventPath+'/settings');
-      dbSDK.onValue(settingsRef,snap=>{const d=snap.val();if(!d){ready=false;report(fail('لم يتم تهيئة الحفل بعد.'));return;}state={...state,...d};ready=true;lastError='';emit();},err=>{ready=false;report(err);});
+      dbSDK.onValue(settingsRef,snap=>{
+        const d=snap.val();
+        /* إعدادات آمنة افتراضيًا: وجود settings في Firebase يحدّثها فورًا،
+           وعدم وصول لقطة مؤقتًا لا يعطّل واجهة التسجيل برسالة تهيئة مضللة. */
+        if(d && typeof d === 'object') state={...state,...d};
+        ready=true; lastError=''; emit();
+      },err=>{ready=false;report(err);});
       authSDK.onAuthStateChanged(auth,async user=>{
         authorized=false;participants=[];winners=[];peopleReady=winnersReady=false;emit();
         if(!user||user.isAnonymous)return;
