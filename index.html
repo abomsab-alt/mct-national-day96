@@ -190,7 +190,7 @@ html,body,button,input,select,textarea,*{font-family:'Cairo',sans-serif !importa
           <div id="modeNotice" class="status-banner" role="status"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8v.01M12 11v6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"/></svg><span id="modeText">جارٍ تجهيز التسجيل…</span></div>
           <form id="registrationForm" novalidate>
             <div class="field"><label for="fullName">الاسم الرباعي</label><input id="fullName" name="fullName" autocomplete="name" placeholder="اكتب اسمك الرباعي" required minlength="8" maxlength="120" aria-describedby="registrationError"></div>
-            <div class="field"><label for="academicNumber">الرقم الأكاديمي</label><input id="academicNumber" name="academicNumber" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="مثال: 441234567" required aria-describedby="academicHelp registrationError"></div>
+            <div class="field"><label for="academicNumber">الرقم الأكاديمي</label><input id="academicNumber" name="academicNumber" inputmode="numeric" autocomplete="off" minlength="9" maxlength="9" pattern="[0-9]{9}" placeholder="مثال: 441234567" required aria-describedby="academicHelp registrationError"></div>
             <div class="error-box" id="registrationError" role="alert" hidden></div>
             <button class="btn btn-primary form-submit" id="submitRegistration" type="submit" disabled><span id="submitText">تأكيد المشاركة</span><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 12H4m7-7-7 7 7 7"/></svg></button>
             <div class="privacy-note"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg><span>تُستخدم بياناتك لتنظيم سحب الحفل والتحقق من الفائزين.</span></div>
@@ -251,7 +251,7 @@ const ND = (() => {
   function validate(name, academic) {
     name = normalizeName(name); academic = normalizeDigits(academic).trim();
     if (name.length > 120 || name.split(' ').filter(Boolean).length < 4 || !/^[\p{L}\p{M}\s'’\-]+$/u.test(name)) throw fail('أدخل الاسم الرباعي كاملًا، من دون أرقام أو رموز.', 'name');
-    if (!/^[0-9]{5,15}$/.test(academic)) throw fail('أدخل رقمًا أكاديميًا صحيحًا من 5 إلى 15 رقمًا.', 'academic');
+    if (!/^[0-9]{9}$/.test(academic)) throw fail('الرقم الأكاديمي يجب أن يتكون من 9 أرقام فقط.', 'academic');
     return { name, academic };
   }
   const mask = n => '•••• ' + String(n).slice(-4);
