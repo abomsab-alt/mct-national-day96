@@ -228,7 +228,7 @@ html,body,button,input,select,textarea,*{font-family:'Cairo',sans-serif !importa
 <button class="btn btn-light presentation-exit" id="exitPresentation" type="button"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 9h6V3M15 3v6h6M21 15h-6v6M9 21v-6H3"/></svg>الخروج من شاشة الحفل</button>
 <dialog class="dialog" id="loginDialog" aria-labelledby="loginTitle">
   <div class="dialog-icon"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg></div><h2 id="loginTitle">دخول المشرف</h2><p>سجّل الدخول بالحساب المخوّل لإدارة سحب الحفل.</p>
-  <form id="loginForm"><div class="field"><label for="adminEmail">البريد الإلكتروني</label><input id="adminEmail" type="email" autocomplete="username" required dir="ltr"></div><div class="field"><label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" required dir="ltr"></div><div class="error-box" id="loginError" role="alert" hidden></div><div class="dialog-actions"><button class="btn btn-primary" type="submit" id="loginSubmit">دخول</button><button class="btn btn-outline" type="button" data-close="loginDialog">إلغاء</button></div></form>
+  <form id="loginForm"><div class="field"><label for="adminEmail">اسم المستخدم أو البريد الإلكتروني</label><input id="adminEmail" type="text" autocomplete="username" required dir="ltr" placeholder="ahmad.i"></div><div class="field"><label for="adminPassword">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" required dir="ltr"></div><div class="error-box" id="loginError" role="alert" hidden></div><div class="dialog-actions"><button class="btn btn-primary" type="submit" id="loginSubmit">دخول</button><button class="btn btn-outline" type="button" data-close="loginDialog">إلغاء</button></div></form>
 </dialog>
 <dialog class="dialog" id="confirmDialog" aria-labelledby="confirmTitle"><div class="dialog-icon"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8v.01M12 11v6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"/></svg></div><h2 id="confirmTitle"></h2><p id="confirmText"></p><div class="dialog-actions"><button type="button" id="confirmAction" class="btn btn-primary">تأكيد</button><button type="button" class="btn btn-outline" data-close="confirmDialog">إلغاء</button></div></dialog>
 <dialog class="dialog" id="shareDialog" aria-labelledby="shareTitle"><div class="dialog-icon"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h3v3h3v3h-6zM21 12v3M12 3v3M3 12h3M12 12v9M9 12h3M15 12h3"/></svg></div><h2 id="shareTitle">رابط تسجيل المتدربين</h2><p id="shareDescription">اعرض الرمز للمتدربين أو شارك رابط صفحة التسجيل.</p><div id="qrCode" class="qr-box" hidden></div><div id="shareUrl" class="link-box" dir="ltr"></div><div class="dialog-actions"><button class="btn btn-primary" id="copyLink" type="button">نسخ الرابط</button><button class="btn btn-outline" type="button" data-close="shareDialog">إغلاق</button></div></dialog>
@@ -323,7 +323,7 @@ const ND = (() => {
         try{
           const adminSnap=await db.ref('ui_auth_users_v2/'+user.uid).once('value');
           const adminData=adminSnap.val();
-          if(!adminData || adminData.active!==true || adminData.role!=='مدير النظام'){report(fail('هذا الحساب غير مخوّل لإدارة السحب.'));return;}
+          if(!adminData || adminData.active!==true || !(adminData.role==='مدير النظام' || adminData.nationalDay96Admin===true)){report(fail('هذا الحساب غير مخوّل لإدارة السحب.'));return;}
           authorized=true;
           db.ref(eventPath+'/participants').on('value',snap=>{const v=snap.val()||{};participants=Object.entries(v).map(([id,x])=>({id,...x}));peopleReady=true;if(winnersReady)lastError='';emit();},report);
           db.ref(eventPath+'/winners').on('value',snap=>{const v=snap.val()||{};winners=Object.entries(v).map(([id,x])=>({id,...x})).sort((a,b)=>a.order-b.order);winnersReady=true;if(peopleReady)lastError='';emit();},report);
@@ -341,7 +341,7 @@ const ND = (() => {
     catch(e){if(e?.nd)throw e;if(/PERMISSION_DENIED|permission-denied/.test(String(e?.code||e?.message)))throw fail('لم يتم التسجيل. قد يكون الرقم الأكاديمي مسجّلًا مسبقًا أو التسجيل مغلقًا.');throw e;}
     return data;
   }
-  async function login(email,password){if(!cloud)throw fail('خدمة الدخول غير جاهزة.');lastError='';await cloud.auth.signInWithEmailAndPassword(email.trim(),password);}
+  async function login(email,password){if(!cloud)throw fail('خدمة الدخول غير جاهزة.');lastError='';let identifier=String(email||'').trim();if(identifier && !identifier.includes('@')) identifier += '@tvtc.gov.sa';await cloud.auth.signInWithEmailAndPassword(identifier,password);}
   function openPreview(){}
   async function logout(){if(cloud)await cloud.auth.signOut();authorized=false;emit();}
   async function setRegistration(open){requireReady(true);const {db}=cloud;await db.ref(eventPath+'/settings').update({registrationOpen:open,revision:(state.revision||0)+1});}
