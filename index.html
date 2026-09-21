@@ -402,6 +402,22 @@ const ND = (() => {
   }
   ND.onChange(s=>{snapshot=s;if(isDraw)renderDraw(s);else renderRegister(s);});
   if(!isDraw){
+    // الرقم الأكاديمي: أرقام فقط وبحد أقصى 9 خانات حتى على الجوال.
+    const academicInput=$('academicNumber');
+    academicInput.setAttribute('minlength','9');
+    academicInput.setAttribute('maxlength','9');
+    academicInput.setAttribute('pattern','[0-9]{9}');
+    academicInput.addEventListener('input',()=>{
+      academicInput.value=String(academicInput.value).replace(/[^0-9٠-٩۰-۹]/g,'').slice(0,9);
+      academicInput.removeAttribute('aria-invalid');
+      error('registrationError','');
+    });
+    academicInput.addEventListener('paste',event=>{
+      event.preventDefault();
+      const pasted=(event.clipboardData||window.clipboardData).getData('text');
+      academicInput.value=String(pasted).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'').slice(0,9);
+      academicInput.dispatchEvent(new Event('input',{bubbles:true}));
+    });
     $('registrationForm').addEventListener('submit',async event=>{
       event.preventDefault();if(submitting)return; error('registrationError','');
       for(const id of ['fullName','academicNumber'])$(id).removeAttribute('aria-invalid');
